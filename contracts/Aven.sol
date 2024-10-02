@@ -40,15 +40,25 @@ contract Aven {
     mapping(uint256 => Program[]) archivedPrograms;
     mapping(uint256 => bool) programCompleted;
 
+
+    event UserRegistered(uint256 indexed id, address indexed user);
+    event AttendanceProof(address indexed user, uint256 indexed id);
+    
+
     constructor(address _avenPOA) {
         owner = msg.sender;
         avenPOA = AvenPOA(_avenPOA);  // Set AvenPOA contract address on deployment
     }
 
+    // this registers user to the platform
     function registerUser() external {
+        require(msg.sender != address(0), "Invalid address");
+        
         uint256 id = allUsers.length + 1;
         User memory newUser = User(id, msg.sender, false);
         allUsers.push(newUser);
+
+        emit UserRegistered(id, msg.sender);
     }
 
     function createEvent(
@@ -70,6 +80,7 @@ contract Aven {
 
     // User signup for event
     function eventSignup(uint256 id) external {
+        require(id != 0, "Incorrect number");
         programAttendees[id].push(msg.sender);
     }
 
@@ -79,6 +90,7 @@ contract Aven {
     }
 
     function removeEvent(uint256 id) external {
+        require(id != 0, "Invalid Id");
         delete allPrograms[id];
     }
 
@@ -91,13 +103,14 @@ contract Aven {
     }
 
     function getUser(uint256 id) external view returns (User memory) {
+        require(id != 0, "Invalid id");
         return registeredUserID[id];
     }
 
     // Mint proof of attendance on event completion
     function proofOfAttendance(uint256 id) external {
         require(id > 0 && id < allPrograms.length, "Invalid event ID");
-        require(programCompleted[id] == true, "Event is still ongoing");
+        require(programCompleted[id] == true, "Event is ongoing");
 
         bool isAttendee = false;
         for (uint256 i = 0; i < programAttendees[id].length; i++) {
@@ -107,9 +120,11 @@ contract Aven {
             }
         }
 
-        require(isAttendee, "You did not attend this event");
+        require(isAttendee, "You didn't attend this event");
 
         // Mint Proof of Attendance (POA) to the user
         avenPOA.mint(msg.sender, id, 1, "");
+
+        emit AttendanceProof(msg.sender, id);
     }
 }
